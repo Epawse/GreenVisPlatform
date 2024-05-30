@@ -1,12 +1,23 @@
 import { createRouter, createWebHistory } from "vue-router";
 
 import Map from "../views/Map.vue";
-
+import testWMTS from "../views/testWMTS.vue";
+import testWFS from "../views/testWFS.vue";
 const routes = [
   {
     path: "/map",
     name: "map",
     component: Map,
+  },
+  {
+    path: "/testWMTS",
+    name: "testWMTS",
+    component: testWMTS,
+  },
+  {
+    path: "/testWFS",
+    name: "testWFS",
+    component: testWFS,
   },
 ];
 

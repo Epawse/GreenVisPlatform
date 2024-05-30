@@ -1,21 +1,10 @@
 <template>
   <div class="header">
-    <div class="logo">Test</div>
+    <div class="logo">
+      <img src="/icon.png" alt="Logo Icon" class="logo-icon" />
+      <span>城市绿色空间展示平台</span>
+    </div>
     <div class="nav">
-      <!-- <el-select
-        v-model="selectedDataType"
-        placeholder="请选择数据类型"
-        size="large"
-        style="width: 240px"
-      >
-        <el-option
-          v-for="typeItem in typeOptions"
-          :key="typeItem.value"
-          :label="typeItem.label"
-          :value="typeItem.value"
-        ></el-option>
-      </el-select> -->
-
       <el-cascader
         v-model="selectedDataType"
         placeholder="请选择数据类型"
@@ -63,6 +52,13 @@
         :class="{ active: chartVisible }"
         >查看图表</el-button
       >
+      <el-button
+        @click="toggleSeggestion()"
+        size="large"
+        :class="{ active: suggestionVisible }"
+        >查看建议</el-button
+      >
+
       <el-button @click="toggleBasemap()" size="large">底图</el-button>
     </div>
   </div>
@@ -70,47 +66,45 @@
   <div class="container">
     <div class="map-wrapper">
       <div id="mapDom" class="map"></div>
+      <div id="popup" class="ol-popup" v-show="isSelecting">
+        <a href="#" id="popup-closer" class="ol-popup-closer"></a>
+        <div id="popup-content"></div>
+      </div>
+
       <div class="chart-panel" v-show="chartVisible">
-        <div class="chart-header">
-          <span
-            >{{ selectedYear }} 年
-            {{ selectedDataType }} 政策下各区域指标统计</span
-          >
+        <div class="chart-header" v-show="chartVisible">
+          <span>{{ selectedYear }} 年绿地可达性与公平性指标</span>
           <i class="el-icon-close" @click="chartVisible = false"></i>
         </div>
-        <div class="chart-body">
-          <el-table :data="chartData" @row-click="highlightFeature">
-            <el-table-column prop="region" label="行政区"></el-table-column>
+        <!-- 可达性表 -->
+        <div class="chart-body-1" v-show="chart_1_visible">
+          <el-table :data="tableData" height="300" style="width: 100%">
             <el-table-column
-              prop="accessibility"
-              label="绿地可达性指标"
-            ></el-table-column>
-            <el-table-column
-              prop="equity"
-              label="绿地公平性指标"
-            ></el-table-column>
-          </el-table>
-          <div class="chart-footer">
-            <el-button size="small" @click="chartVisible = false"
-              >关闭</el-button
+              v-for="(header, index) in tableHeaders"
+              :key="index"
+              :prop="header"
+              :label="header"
             >
+            </el-table-column>
+          </el-table>
+        </div>
+        <!-- 公平性表 -->
+        <div class="chart-body-2" v-show="chart_2_visible">
+          <div v-for="(image, index) in images" :key="image" class="block">
+            <span class="demonstration">{{ demonstrations[index] }}</span>
+            <el-image
+              style="width: 200px; height: 130px"
+              :src="image"
+              :fit="fill"
+            ></el-image>
           </div>
         </div>
       </div>
 
-      <!-- <div v-if="chartVisible" class="chart-container">
-        <el-table :data="chartData" border>
-          <el-table-column prop="region" label="行政区"></el-table-column>
-          <el-table-column
-            prop="accessibility"
-            label="绿地可达性指标"
-          ></el-table-column>
-          <el-table-column
-            prop="equity"
-            label="绿地公平性指标"
-          ></el-table-column>
-        </el-table>
-      </div> -->
+      <div class="suggestion-panel" v-show="suggestionVisible">
+        <div v-html="suggestionContent"></div>
+      </div>
+
       <div v-if="basemapVisible" class="basemap-container">
         <div
           v-for="basemap in basemaps"
@@ -153,10 +147,6 @@
           <el-button @click="onZoom(true)">放大一级</el-button>
           <el-button @click="onZoom(false)">缩小一级</el-button>
           <el-button @click="onMoveWh()">移动到武汉</el-button>
-          <el-button @click="onRestore()">复位</el-button>
-          <el-button @click="onScaleChange('line')">比例尺线</el-button>
-          <el-button @click="onScaleChange('bar')">比例尺条</el-button>
-          <el-button @click="openFileUpload()">上传</el-button>
           <input
             type="file"
             ref="fileInput"
@@ -165,6 +155,21 @@
             style="display: none"
           />
         </el-button-group>
+        <el-button-group class="button-group" vertical>
+          <el-button @click="onRestore()">复位</el-button>
+          <el-button @click="onScaleChange('line')">比例尺线</el-button>
+          <el-button @click="onScaleChange('bar')">比例尺条</el-button>
+          <el-button @click="openFileUpload()">上传</el-button>
+        </el-button-group>
+        <el-button-group class="button-group" vertical>
+          <el-button @click="testWMTS()">测试WMTS</el-button>
+          <el-button @click="testWFS()">测试WFS</el-button>
+        </el-button-group>
+      </div>
+
+      <div class="legend">
+        <!-- <img src="/images/legend3.png" alt="Legend" style="" /> -->
+        <img :src="legendSrc" alt="Legend" style="" v-show="isLegend" />
       </div>
 
       <!-- <el-card class="layers-control">
@@ -202,7 +207,6 @@
       </el-card>
     </div>
   </div>
-
   <div class="attribute-panel">
     <el-table :data="features" style="width: 100%" max-height="100%">
       <el-table-column prop="id" label="ID" width="180"></el-table-column>
@@ -247,28 +251,6 @@
       </el-table-column>
     </el-table>
   </div>
-
-  <!-- 属性表区域 -->
-  <div class="attribute-table" v-if="attributeTableVisible">
-    <el-card>
-      <div class="clearfix">
-        <span>属性表</span>
-        <el-button @click="closeAttributeTable" type="text" class="close-button"
-          >X</el-button
-        >
-      </div>
-      <div>
-        <el-table :data="attributeData" style="width: 100%">
-          <el-table-column
-            v-for="(col, index) in attributeColumns"
-            :key="index"
-            :prop="col.prop"
-            :label="col.label"
-          ></el-table-column>
-        </el-table>
-      </div>
-    </el-card>
-  </div>
 </template>
 
 <script>
@@ -283,7 +265,7 @@ import { Circle as CircleStyle } from "ol/style";
 import { Point } from "ol/geom";
 import { Select, Translate, Modify, Transform } from "ol/interaction";
 import { Collection } from "ol";
-import { getCenter, getHeight, getWidth } from "ol/extent.js";
+import { getCenter, getHeight, getWidth, getTopLeft } from "ol/extent.js";
 import {
   always,
   click,
@@ -305,7 +287,10 @@ import proj4 from "proj4";
 import { register } from "ol/proj/proj4";
 import { fromLonLat } from "ol/proj";
 import { TileWMS } from "ol/source";
-
+import { WMTS } from "ol/source";
+import { get as getProj } from "ol/proj";
+import WMTSTileGrid from "ol/tilegrid/WMTS.js";
+import { Projection } from "ol/proj";
 proj4.defs("EPSG:4326", "+proj=longlat +datum=WGS84 +no_defs");
 proj4.defs(
   "EPSG:3857",
@@ -313,21 +298,6 @@ proj4.defs(
 );
 register(proj4);
 
-// import {
-//   createLyrTian,
-//   createLyrBd,
-//   createLyrGd,
-//   createLyrOSM,
-//   createLyrBing,
-//   createLyrArc,
-//   createLyrWMS,
-//   createLyrWMTS,
-//   createLyrWFS,
-//   createLyrGeoJSON,
-//   createLyrKML,
-//   createLyrGPX,
-//   createLyrVecTile,
-// } from "../utils/createLayer.js";
 
 // 地图控件
 import Zoom from "ol/control/Zoom.js";
@@ -350,6 +320,10 @@ import { getExtent } from "ol/extent"; // Import the getExtent function from the
 import { singleClick } from "ol/events/condition";
 import { Transition } from "vue";
 import { bbox as bboxStrategy } from "ol/loadingstrategy";
+import { toLonLat } from "ol/proj.js";
+import { toStringHDMS } from "ol/coordinate.js";
+import * as d3 from "d3";
+import { ElMessage } from "element-plus";
 
 export default {
   components: {
@@ -379,8 +353,11 @@ export default {
       translate: null,
       transform: null,
       defaultStyle: null,
+      legendSrc: null,
+      isLegend: false,
       select: null,
       selectedFeatures: [],
+      isSelecting: false,
       geoJSONViewerVisible: false, // 控制GeoJSON查看器的显示
       selectedFeatureGeoJSON: null,
       parsedGeoJSON: null, // 用于存储解析后的GeoJSON数据
@@ -451,10 +428,18 @@ export default {
           label: "有政策",
         },
       ],
-      yearOptions: ["2009", "2014", "2030", "2040", "2050"],
+      yearOptions: ["2014", "2030", "2040", "2050"],
       shpLayer: null,
       chartVisible: false,
+      chart_1_visible: true,
+      chart_2_visible: false,
       chartData: [],
+      images: [],
+      demonstrations: [],
+      tableData: [],
+      tableHeaders: [],
+      suggestionVisible: false,
+      suggestionContent: "",
       basemapVisible: false,
       basemaps: [
         {
@@ -537,7 +522,7 @@ export default {
   methods: {
     isYearDisabled(year) {
       if (!this.isPredict) {
-        return year !== "2009" && year !== "2014";
+        return year !== "2014";
       } else {
         return year !== "2030" && year !== "2040" && year !== "2050";
       }
@@ -545,7 +530,7 @@ export default {
     resetSelectedYear() {
       if (this.isYearDisabled(this.selectedYear)) {
         if (!this.isPredict) {
-          this.selectedYear = "2009"; // 将年份重置为2009
+          this.selectedYear = "2014"; // 将年份重置为2009
           this.selectedPolicy = "noFactor"; // 将政策重置为无政策
         } else {
           this.selectedYear = "2030"; // 将年份重置为2030
@@ -639,91 +624,169 @@ export default {
 
         this.map.addLayer(this.shpLayer);
 
-        const geojsonFilePath = `/geojson/${this.selectedDataType[0]}_${this.selectedYear}.geojson`;
+        let geojsonFilePath;
+        if (this.selectedDataType[0] === "landuse") {
+          geojsonFilePath = "/geojson/greenAccessibility_2030.geojson";
+        } else {
+          geojsonFilePath = `/geojson/${this.selectedDataType[0]}_${this.selectedYear}.geojson`;
+        }
+
+        let drawSource;
+        let drawLayer;
+
         fetch(geojsonFilePath)
           .then((response) => response.json())
           .then((data) => {
             const features = new GeoJSON().readFeatures(data);
-            // 创建绘制图层的来源
-            if (!this.drawSource) {
-              this.drawSource = new VectorSource();
-            }
-            this.drawSource.addFeatures(features);
 
-            // 设置样式：内部完全透明，边框线为红色
-            const vectorStyle = new Style({
+            drawSource = new VectorSource();
+            drawSource.addFeatures(features);
+
+            // 设置样式,完全透明
+            let vectorStyle;
+            vectorStyle = new Style({
               fill: new Fill({
                 color: "rgba(0, 0, 0, 0)", // 完全透明
               }),
               stroke: new Stroke({
-                // 灰色且有透明度的边框
-                color: "rgba(255, 255, 255, 0.2)",
+                color: "rgba(0,0,0,0)",
                 width: 0.5,
               }),
             });
 
-            // 创建绘制图层
-            if (!this.drawLayer) {
-              this.drawLayer = new VectorLayer({
-                source: this.drawSource,
-                style: vectorStyle,
-              });
-              // 设置绘制图层的z-index
-              this.drawLayer.setZIndex(1000);
-              this.map.addLayer(this.drawLayer);
-              this.map.getView().fit(this.drawSource.getExtent());
-            }
+            drawLayer = new VectorLayer({
+              source: drawSource,
+              style: vectorStyle,
+            });
+            drawLayer.setZIndex(1000);
+            this.map.addLayer(drawLayer);
+            this.map.getView().fit(drawSource.getExtent());
           })
           .catch((error) => {
             console.error("获取GeoJSON数据失败:", error);
           });
+
+        if (this.selectedDataType[0] === "landuse") {
+          this.legendSrc = "/images/legend_landuse.png";
+          this.isLegend = true;
+        } else if (this.selectedDataType[0] === "greenAccessibility") {
+          this.isLegend = true;
+          if (this.selectedDataType[1] === "walk") {
+            this.legendSrc = "/images/legend_walk.png";
+          } else if (this.selectedDataType[1] === "near") {
+            this.legendSrc = "/images/legend_near.png";
+          } else if (this.selectedDataType[1] === "car") {
+            this.legendSrc = "/images/legend_car.png";
+          } else if (this.selectedDataType[1] === "sum") {
+            this.legendSrc = "/images/legend_sum.png";
+          }
+        } else {
+          this.isLegend = false;
+        }
       }
     },
+    testWMTS() {
+      // 跳转
+      this.$router.push("/testWMTS");
+    },
+    testWFS() {
+      // 跳转
+      this.$router.push("/testWFS");
+    },
+    toggleChart() {
+      if (this.chartVisible) {
+        this.chartVisible = false;
+      } else {
+        this.showChart();
+      }
+    },
+    toggleSeggestion() {
+      const legend = document.querySelector(".legend");
+      if (this.suggestionVisible) {
+        this.suggestionVisible = false;
+        legend.style.right = "45px";
+      } else {
+        this.showSeggestion();
+        legend.style.right = "25%";
+      }
+    },
+    showSeggestion() {
+      // 显示suggestion-panel
+      this.suggestionVisible = true;
 
-    // toggleChart() {
-    //   if (this.chartVisible) {
-    //     this.chartVisible = false;
-    //   } else {
-    //     this.showChart();
-    //   }
-    // },
-
-    // showChart() {
-    //   this.chartVisible = true;
-
-    //   if (this.selectedDataType && this.selectedYear) {
-    //     const url = `https://localhost:8080/geoserver/wms`;
-    //     const params = {
-    //       SERVICE: "WMS",
-    //       VERSION: "1.1.1",
-    //       REQUEST: "GetFeatureInfo",
-    //       LAYERS: `workspace:${this.selectedDataType}_${this.selectedYear}`,
-    //       QUERY_LAYERS: `workspace:${this.selectedDataType}_${this.selectedYear}`,
-    //       INFO_FORMAT: "application/json",
-    //       FEATURE_COUNT: 1000,
-    //       X: 0,
-    //       Y: 0,
-    //       WIDTH: 1,
-    //       HEIGHT: 1,
-    //       SRS: "EPSG:4326",
-    //       BBOX: "-180,-90,180,90",
-    //     };
-
-    //     fetch(`${url}?${new URLSearchParams(params)}`)
-    //       .then((response) => response.json())
-    //       .then((data) => {
-    //         this.chartData = data.features.map((feature) => ({
-    //           region: feature.properties.region,
-    //           accessibility: feature.properties.accessibility,
-    //           equity: feature.properties.equity,
-    //         }));
-    //         this.chartVisible = true;
-    //       })
-    //       .catch((error) => {
-    //         console.error("获取属性表数据失败:", error);
-    //       });
-    //   }
-    // },
+      // 加载建议内容
+      const suggestionUrl = `/suggestions/suggestion_${this.selectedYear}.txt`;
+      fetch(suggestionUrl)
+        .then((response) => response.text())
+        .then((text) => {
+          this.suggestionContent = text;
+          // 换行符替换为<br>
+          this.suggestionContent = this.suggestionContent.replace(
+            /\n/g,
+            "<br>"
+          );
+        })
+        .catch((error) => {
+          ElMessage.error("加载建议内容失败");
+          console.error("Error loading suggestion content:", error);
+        });
+    },
+    showChart() {
+      if (!this.selectedYear || this.selectedDataType.length === 0) {
+        this.$message.error("请选择数据类型和数据年份");
+        this.chartVisible = false;
+        return;
+      } else if (this.selectedDataType[0] === "greenEquity") {
+        this.chartVisible = true;
+        this.chart_1_visible = false;
+        this.chart_2_visible = true;
+        const header = document.querySelector(".chart-header");
+        // 更改图表标题
+        header.innerHTML = "绿地公平性指标";
+        let walkImage = "/images/步行公平性.png";
+        let driveImage = "/images/驾车公平性.png";
+        let nearImage = "/images/近邻公平性.png";
+        let sumImage = "/images/总体公平性.png";
+        this.images = [walkImage, driveImage, nearImage, sumImage];
+        this.demonstrations = [
+          "步行公平性",
+          "驾车公平性",
+          "近邻公平性",
+          "总体公平性",
+        ];
+      } else if (this.selectedDataType[0] === "greenAccessibility") {
+        this.chartVisible = true;
+        this.chart_1_visible = true;
+        this.chart_2_visible = false;
+        const header = document.querySelector(".chart-header");
+        // 更改图表标题
+        header.innerHTML = `${this.selectedYear} 年绿地可达性指标`;
+        // 加载表格
+        const tableUrl = `/tables/分区统计Aij_${this.selectedYear}.csv`;
+        d3.csv(tableUrl)
+          .then((data) => {
+            this.loadTable(data);
+          })
+          .catch((error) => {
+            ElMessage.error("加载表格数据失败");
+            console.error("Error loading table data:", error);
+          });
+      } else {
+        this.chartVisible = false;
+        this.chart_1_visible = false;
+        this.chart_2_visible = false;
+        this.$message.error("暂无数据");
+        return;
+      }
+    },
+    loadTable(data) {
+      if (data.length > 0) {
+        this.tableHeaders = Object.keys(data[0]);
+        this.tableData = data;
+      } else {
+        ElMessage.error("表格数据为空");
+      }
+    },
     resetStatus() {
       this.map.removeInteraction(this.draw);
       this.map.removeInteraction(this.modify);
@@ -735,6 +798,7 @@ export default {
 
       // 禁用select交互
       this.select.setActive(false);
+      this.isSelecting = false;
 
       this.selectedFeatures = [];
 
@@ -893,9 +957,34 @@ export default {
     },
     selectFeature() {
       this.resetStatus();
+      this.isSelecting = true;
 
       // 启用select交互
       this.select.setActive(true);
+
+      const container = document.getElementById("popup");
+      const content = document.getElementById("popup-content");
+      const closer = document.getElementById("popup-closer");
+
+      const overlay = new Overlay({
+        element: container,
+        autoPan: {
+          animation: {
+            duration: 250,
+          },
+        },
+      });
+
+      closer.onclick = function () {
+        overlay.setPosition(undefined);
+        closer.blur();
+        return false;
+      };
+
+      this.map.addOverlay(overlay);
+
+      // 选中要素事件
+      // 存储选中的要素
 
       this.select.on("select", function (e) {
         e.target
@@ -903,7 +992,36 @@ export default {
           .getArray()
           .forEach((item) => {
             console.log(item.values_);
+            let name = item.values_.SQNAME;
+            let drive_Aij_ = item.values_.drive_Aij_;
+            let walk_Aij_w = item.values_.walk_Aij_w;
+            let near_Aij_n = item.values_.near_Aij_n;
+            let plus_Aij_s = item.values_.plus_Aij_s;
+            content.innerHTML =
+              "<p>地块名称:" +
+              name +
+              "</p><code>" +
+              "<p>near_Aij_n:" +
+              near_Aij_n +
+              "</p>" +
+              "<p>walk_Aij_w:" +
+              walk_Aij_w +
+              "</p>" +
+              "<p>drive_Aij_:" +
+              drive_Aij_ +
+              "</p>" +
+              "<p>plus_Aij_s:" +
+              plus_Aij_s +
+              "</p>";
+            overlay.setPosition(item.getGeometry().getCoordinates());
           });
+      });
+
+      this.map.on("singleclick", function (evt) {
+        const coordinate = evt.coordinate;
+        const hdms = toStringHDMS(toLonLat(coordinate));
+
+        overlay.setPosition(coordinate);
       });
     },
     translateFeature() {
@@ -1376,39 +1494,7 @@ export default {
 
     // 初始化地图
     initMap() {
-      // const layers = [
-      //   // createLyrTian(),
-      //   createLyrGd(),
-      //   // createLyrBd(),
-      //   // createLyrOSM(),
-      //   // createLyrBing(),
-      //   // createLyrArc(),
-      //   // createLyrWMS(),
-      //   // createLyrWMTS(),
-      //   // createLyrWFS(),
-      //   // createLyrGeoJSON(),
-      //   // createLyrKML(),
-      //   // createLyrGPX(),
-      //   // createLyrVecTile(),
-      // ];
-
-      // console.log(layers);
-      // console.log(createLyrWMS());
-
       let source = newBaseSource("OSM");
-
-      // const overviewMapControl = new OverviewMap({
-      //   // see in overviewmap-custom.html to see the custom CSS used
-      //   className: "ol-overviewmap ol-custom-overviewmap",
-      //   layers: [
-      //     new TileLayer({
-      //       source: source,
-      //     }),
-      //   ],
-      //   collapseLabel: "\u00BB",
-      //   label: "\u00AB",
-      //   collapsed: false,
-      // });
 
       this.map = new Map({
         // controls: defaultControls().extend([overviewMapControl]),
@@ -1424,21 +1510,6 @@ export default {
       this.setBasemap("Gaode");
 
       console.log(this.map);
-
-      // 将图层信息存储到 this.layers
-      // for (let i = 0; i < layers.length; i++) {
-      //   this.layers.push({
-      //     name: layers[i].get("name"),
-      //     title: layers[i].get("title"),
-      //     locate: layers[i].get("locate"),
-      //     layer: layers[i],
-      //   });
-      // }
-
-      // 根据初始visible状态设置checks
-      // this.layers.forEach((layer) => {
-      //   layer.layer.getVisible() && this.checks.push(layer.name);
-      // });
 
       this.view = this.map.getView();
       this.zoom = this.view.getZoom();
@@ -1469,11 +1540,6 @@ export default {
         collapsed: false,
         layers: [new TileLayer({ source: baseLayer.getSource() })],
       });
-
-      // this.miniMap = new OverviewMap({
-      //   collapsed: false,
-      //   layers: [new TileLayer({ source: baseLayer.getSource() })],
-      // });
 
       // 控件添加到地图
       this.map.addControl(miniMap);
@@ -1532,23 +1598,10 @@ export default {
       //   }
       // });
 
-      // 初始化选择交互
-      // this.select = new Select({
-      //   toggleCondition: platformModifierKeyOnly,
-      //   // style: new Style({
-      //   //   fill: new Fill({
-      //   //     color: "#eeeeee",
-      //   //   }),
-      //   //   stroke: new Stroke({
-      //   //     color: "rgba(255, 255, 255, 0.4)",
-      //   //     width: 2,
-      //   //   }),
-      //   // }),
-      // });
-
       this.select = new Select({
         condition: singleClick,
-        toggleCondition: always,
+        // toggleCondition: always,
+        toggleCondition: platformModifierKeyOnly,
         style: new Style({
           fill: new Fill({
             color: "rgba(255, 255, 0, 0.7)",
@@ -1559,8 +1612,6 @@ export default {
           }),
         }),
       });
-
-      // this.selectedFeatures = this.select.getFeatures();
 
       this.map.addInteraction(this.select);
     },
@@ -1625,13 +1676,28 @@ export default {
 </script>
 
 <style scoped>
+.logo {
+  display: inline-flex; /* 或者使用 display: flex; 根据需要 */
+  align-items: center; /* 垂直居中对齐 */
+  font-size: 1.5em; /* 调整字体大小 */
+  font-weight: bold; /* 调整字体粗细 */
+  color: #333; /* 调整文本颜色 */
+}
+
+.logo-icon {
+  width: 40px; /* 调整图标宽度 */
+  height: 40px; /* 调整图标高度 */
+  margin-right: 10px; /* 图标与文本之间的间距 */
+  vertical-align: middle; /* 确保图标垂直居中对齐文本 */
+}
+
 .container {
   display: flex;
   flex-direction: column;
   height: 80vh;
   /* padding: 10px;  */
-  margin-left: 60px;
-  margin-right: 60px;
+  margin-left: 80px;
+  margin-right: 80px;
   margin-top: 20px;
   box-sizing: border-box;
 }
@@ -1642,8 +1708,8 @@ export default {
   justify-content: space-between;
   /* background-color: #f5f5f5; */
   /* padding: 10px 20px; */
-  margin-left: 60px;
-  margin-right: 60px;
+  margin-left: 80px;
+  margin-right: 80px;
   margin-top: 20px;
   border-radius: 8px; /* 圆角 */
 }
@@ -1670,6 +1736,22 @@ export default {
   height: calc(100% - 50px); /* Adjust height to consider the header */
 }
 
+.legend {
+  position: absolute;
+  bottom: 10px;
+  right: 45px;
+  background-color: rgba(255, 255, 255, 0.8); /* 可选：设置背景颜色和透明度 */
+  padding: 5px; /* 可选：设置内边距 */
+  border-radius: 5px; /* 可选：设置圆角 */
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.3); /* 可选：设置阴影 */
+}
+
+.legend img {
+  display: block;
+  width: 300px; /* 设置图例图片的宽度 */
+  height: 40px;
+}
+
 #mapDom {
   flex: 1;
   height: 100%;
@@ -1687,8 +1769,8 @@ export default {
 
 .map-controls {
   position: absolute;
-  bottom: 100px;
-  right: 60px;
+  top: 290px;
+  left: 100px;
   z-index: 1000;
   max-width: 5%;
   display: flex;
@@ -1752,8 +1834,8 @@ export default {
   overflow: auto;
   background: #fff;
   border: 1px solid #dcdcdc;
-  margin-left: 60px;
-  margin-right: 60px;
+  margin-left: 80px;
+  margin-right: 80px;
   border-radius: 8px;
 }
 
@@ -1786,16 +1868,6 @@ export default {
   margin-left: -7px;
   left: 50%;
 }
-.chart-container {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 300px;
-  height: 200px;
-  background-color: rgba(255, 255, 255, 0.8);
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
 .geojson-viewer {
   position: absolute;
   width: 300px;
@@ -1811,18 +1883,6 @@ export default {
   float: right;
   padding: 0;
   color: #f56c6c;
-}
-
-.chart-container {
-  position: absolute;
-  top: 10px;
-  /* left: 50%; */
-  /* transform: translateX(-50%); */
-  z-index: 1000;
-  background-color: #fff;
-  padding: 10px;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .active {
@@ -1865,8 +1925,8 @@ export default {
   transform: translateX(-50%);
   bottom: 10px;
   /* right: 10px; */
-  height: 50%;
-  width: 65%;
+  height: 45%;
+  width: 50%;
   background: #fff;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
   /* transition: 0.3s ease; */
@@ -1881,13 +1941,98 @@ export default {
 
   text-align: center;
 
-  font-size: 20px;
+  font-size: 16px;
 }
 .el-icon-close {
   float: right;
   cursor: pointer;
 }
-.chart-body {
+.chart-body-1 {
   padding: 5px;
+}
+
+.chart-body-2 {
+  padding: 5px;
+}
+
+.ol-popup {
+  position: absolute;
+  background-color: white;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  padding: 15px;
+  border-radius: 10px;
+  border: 1px solid #cccccc;
+  bottom: 12px;
+  left: -50px;
+  min-width: 280px;
+}
+.ol-popup:after,
+.ol-popup:before {
+  top: 100%;
+  border: solid transparent;
+  content: " ";
+  height: 0;
+  width: 0;
+  position: absolute;
+  pointer-events: none;
+}
+.ol-popup:after {
+  border-top-color: white;
+  border-width: 10px;
+  left: 48px;
+  margin-left: -10px;
+}
+.ol-popup:before {
+  border-top-color: #cccccc;
+  border-width: 11px;
+  left: 48px;
+  margin-left: -11px;
+}
+.ol-popup-closer {
+  text-decoration: none;
+  position: absolute;
+  top: 2px;
+  right: 8px;
+}
+.ol-popup-closer:after {
+  content: "✖";
+}
+.chart-body-2 .block {
+  padding: 5px 0;
+  text-align: center;
+  border-right: solid 1px var(--el-border-color);
+  display: inline-block;
+  width: 50%;
+  box-sizing: border-box;
+  vertical-align: top;
+}
+.chart-body-2 .block:last-child {
+  border-right: none;
+}
+.chart-body-2 .demonstration {
+  display: block;
+  color: var(--el-text-color-secondary);
+  font-size: 10px;
+  margin-bottom: 3px;
+}
+
+.suggestion-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  margin: 20px 0;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  width: 20%;
+}
+
+.suggestion-panel p {
+  margin: 0;
+  font-size: 1em;
+  color: #606266;
 }
 </style>

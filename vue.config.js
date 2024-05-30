@@ -12,6 +12,13 @@ module.exports = {
     client: {
       overlay: false,
     },
+    proxy: {
+      "/geoserver": {
+        target: "http://localhost:8080",
+        changeOrigin: true,
+        pathRewrite: { "^/geoserver": "" },
+      },
+    },
   },
   publicPath:
     process.env.NODE_ENV === "production" ? "/GreenVisPlatform/" : "/",
