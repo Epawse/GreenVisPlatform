@@ -12,7 +12,7 @@
         :options="typeOptions"
         :props="{ expandTrigger: 'hover' }"
         size="large"
-        style="width: 240px"
+        style="width: 180px"
       >
       </el-cascader>
 
@@ -20,7 +20,7 @@
         v-model="selectedYear"
         placeholder="请选择数据年份"
         size="large"
-        style="width: 240px"
+        style="width: 180px"
       >
         <el-option
           v-for="year in yearOptions"
@@ -35,7 +35,7 @@
         v-model="selectedPolicy"
         placeholder="请选择政策"
         size="large"
-        style="width: 240px"
+        style="width: 180px"
         :disabled="isPolicyDisabled"
       >
         <el-option
@@ -69,8 +69,8 @@
       <!-- 地图相关内容 -->
       <div id="mapDom" class="map"></div>
       <!-- 弹出框 -->
-      <div id="popup" class="ol-popup" v-show="isSelecting">
-        <a href="#" id="popup-closer" class="ol-popup-closer"></a>
+      <div id="popup" class="ol-popup" v-show="isShowingPopup">
+        <a href="#" id="popup-closer" class="ol-popup-closer">X</a>
         <div id="popup-content"></div>
       </div>
       <!-- 图表面板 -->
@@ -123,9 +123,21 @@
       <div class="toolbar">
         <!-- 第一组按钮 -->
         <el-button-group class="button-group" vertical>
-          <el-button @click="drawFeature('Point')">画点</el-button>
-          <el-button @click="drawFeature('LineString')">画线</el-button>
-          <el-button @click="drawFeature('Polygon')">画面</el-button>
+          <el-button
+            :class="{ active: activeTool === 'Point' }"
+            @click="drawFeature('Point')"
+            >画点</el-button
+          >
+          <el-button
+            :class="{ active: activeTool === 'LineString' }"
+            @click="drawFeature('LineString')"
+            >画线</el-button
+          >
+          <el-button
+            :class="{ active: activeTool === 'Polygon' }"
+            @click="drawFeature('Polygon')"
+            >画面</el-button
+          >
         </el-button-group>
 
         <!-- 第二组按钮 -->
@@ -133,15 +145,35 @@
           <el-button @click="undo()">撤回</el-button>
           <el-button @click="resetStatus()">取消</el-button>
           <el-button @click="clearDrawLayer()">清除</el-button>
-          <el-button @click="measureDistance()">测距</el-button>
+          <el-button
+            :class="{ active: activeTool === 'measureDistance' }"
+            @click="measureDistance()"
+            >测距</el-button
+          >
         </el-button-group>
 
         <!-- 第三组按钮 -->
         <el-button-group class="button-group" vertical>
-          <el-button @click="selectFeature()">选择</el-button>
-          <el-button @click="translateFeature()">平移</el-button>
-          <el-button @click="editVertices()">编辑</el-button>
-          <el-button @click="rotateFeature()">旋转</el-button>
+          <el-button
+            :class="{ active: activeTool === 'selectFeature' }"
+            @click="selectFeature()"
+            >选择</el-button
+          >
+          <el-button
+            :class="{ active: activeTool === 'translateFeature' }"
+            @click="translateFeature()"
+            >平移</el-button
+          >
+          <el-button
+            :class="{ active: activeTool === 'editVertices' }"
+            @click="editVertices()"
+            >编辑</el-button
+          >
+          <el-button
+            :class="{ active: activeTool === 'rotateFeature' }"
+            @click="rotateFeature()"
+            >旋转</el-button
+          >
         </el-button-group>
       </div>
       <!-- 地图控件 -->
@@ -149,7 +181,13 @@
         <el-button-group class="button-group" vertical>
           <el-button @click="onZoom(true)">放大一级</el-button>
           <el-button @click="onZoom(false)">缩小一级</el-button>
-          <el-button @click="onMoveWh()">移动到武汉</el-button>
+          <el-button @click="onMoveWh()">移动到深圳</el-button>
+        </el-button-group>
+        <el-button-group class="button-group" vertical>
+          <el-button @click="onRestore()">复位</el-button>
+          <el-button @click="onScaleChange('line')">比例尺线</el-button>
+          <el-button @click="onScaleChange('bar')">比例尺条</el-button>
+          <el-button @click="openFileUpload()">上传</el-button>
           <input
             type="file"
             ref="fileInput"
@@ -159,16 +197,56 @@
           />
         </el-button-group>
         <el-button-group class="button-group" vertical>
-          <el-button @click="onRestore()">复位</el-button>
-          <el-button @click="onScaleChange('line')">比例尺线</el-button>
-          <el-button @click="onScaleChange('bar')">比例尺条</el-button>
-          <el-button @click="openFileUpload()">上传</el-button>
-        </el-button-group>
-        <el-button-group class="button-group" vertical>
           <el-button @click="testWMTS()">测试WMTS</el-button>
           <el-button @click="testWFS()">测试WFS</el-button>
+          <el-button
+            :class="{ active: activeTool === 'checkArea' }"
+            @click="checkArea()"
+            >查看地块</el-button
+          >
         </el-button-group>
       </div>
+
+      <!-- 图层管理 -->
+      <div class="layer-manager-container">
+        <el-button
+          @click="toggleLayerManager"
+          type="primary"
+          class="toggle-button"
+        >
+          {{ layerManagerVisible ? "-->" : "<--" }}
+        </el-button>
+        <transition name="slide-fade">
+          <div v-show="layerManagerVisible" class="layer-manager">
+            <el-card class="layer-card">
+              <div class="header">
+                <span>图层管理</span>
+              </div>
+              <el-checkbox-group v-model="checks" class="layer-checkbox-group">
+                <VueDraggable
+                  ref="el"
+                  v-model="layers"
+                  :animation="150"
+                  ghostClass="ghost"
+                  class="flex flex-col gap-2 p-4 w-300px h-300px m-auto bg-gray-500/5 rounded"
+                  @update="onLayersUpdate"
+                >
+                  <el-checkbox
+                    v-for="layer in layers"
+                    :key="layer.name"
+                    :label="layer.name"
+                    @change="toggleLayer(layer)"
+                    class="layer-checkbox"
+                  >
+                    {{ layer.name }}
+                  </el-checkbox>
+                </VueDraggable>
+              </el-checkbox-group>
+            </el-card>
+          </div>
+        </transition>
+      </div>
+
       <!-- 图例 -->
       <div class="legend">
         <img :src="legendSrc" alt="Legend" style="" v-show="isLegend" />
@@ -202,15 +280,24 @@
 
   <!-- 属性面板 -->
   <div class="attribute-panel">
-    <el-table :data="features" style="width: 100%" max-height="100%">
-      <el-table-column prop="id" label="ID" width="180"></el-table-column>
-      <el-table-column prop="type" label="类型" width="120"></el-table-column>
+    <el-table
+      :data="features"
+      style="width: 100%"
+      max-height="100%"
+      :fit="true"
+    >
+      <el-table-column prop="id" label="ID" min-width="100"></el-table-column>
+      <el-table-column
+        prop="type"
+        label="类型"
+        min-width="100"
+      ></el-table-column>
       <el-table-column
         prop="area"
         label="面积(m²)"
-        width="120"
+        min-width="100"
       ></el-table-column>
-      <el-table-column prop="selected" label="选中" width="80">
+      <el-table-column prop="selected" label="选中" min-width="100">
         <template v-slot="scope">
           <el-checkbox
             v-model="scope.row.selected"
@@ -218,7 +305,7 @@
           ></el-checkbox>
         </template>
       </el-table-column>
-      <el-table-column label="操作">
+      <el-table-column label="操作" min-width="200">
         <template v-slot="scope">
           <el-button size="small" @click="locateFeature(scope.row)"
             >定位</el-button
@@ -262,6 +349,8 @@ import {
   DragRotateAndZoom,
   defaults as defaultInteractions,
 } from "ol/interaction.js";
+
+import { LineString } from "ol/geom";
 
 // OpenLayers 图层
 import { Vector as VectorLayer } from "ol/layer";
@@ -333,7 +422,6 @@ import shp from "shpjs";
 import proj4 from "proj4";
 
 // 自定义工具
-import newBaseSource from "../utils/newBaseSource.js";
 import newLayer from "../utils/newLayer.js";
 
 // Vue
@@ -344,9 +432,18 @@ import * as d3 from "d3";
 
 // element-plus
 import { ElMessage } from "element-plus";
+
+// vue-draggable-plus
+import { ref } from "vue";
+import { UseDraggableReturn, VueDraggable } from "vue-draggable-plus";
+
+// 定义 el 变量
+const el = (ref < UseDraggableReturn) | (null > null);
+
 export default {
   components: {
     VueJsonPretty,
+    VueDraggable,
   },
   data() {
     return {
@@ -367,14 +464,15 @@ export default {
 
       // 图层相关
       checks: [],
-      layers: [],
+      // layers: [],
+      layers: new ref([]),
+      layerManagerVisible: false, // 控制图层管理界面的显示/隐藏
       shpLayer: null,
-      shpLayerList: [],
 
       // 选择相关
       select: null,
       selectedFeatures: [],
-      isSelecting: false,
+      isShowingPopup: false,
 
       // GeoJSON 相关
       geoJSONViewerVisible: false,
@@ -430,6 +528,16 @@ export default {
         {
           value: "others",
           label: "其他数据",
+          children: [
+            {
+              value: "parkPoi",
+              label: "公园",
+            },
+            {
+              value: "population",
+              label: "人口密度",
+            },
+          ],
         },
       ],
       policyOptions: [
@@ -454,6 +562,8 @@ export default {
       tableData: [],
       tableHeaders: [],
 
+      // 工具栏相关
+      activeTool: null,
       measureInteraction: null,
       modify: null,
       translate: null,
@@ -472,34 +582,39 @@ export default {
       basemaps: [
         {
           name: "OSM",
-          thumbnail: require("../assets/images/osm-thumbnail.jpg"),
+          thumbnail: require("../assets/images/osm-thumbnail.png"),
         },
         {
           name: "ArcGIS",
-          thumbnail: require("../assets/images/satellite-thumbnail.jpg"),
+          thumbnail: require("../assets/images/satellite-thumbnail.png"),
         },
         {
           name: "Tian",
-          // thumbnail: require("../assets/images/tian-thumbnail.jpg"),
+          thumbnail: require("../assets/images/tian-thumbnail.png"),
         },
         {
           name: "Gaode",
-          // thumbnail : require("../assets/images/gaode-thumbnail.jpg"),
+          thumbnail: require("../assets/images/gaode-thumbnail.png"),
         },
         {
           name: "Baidu",
+          thumbnail: require("../assets/images/baidu-thumbnail.png"),
         },
         {
           name: "Bing",
+          thumbnail: require("../assets/images/bing-thumbnail.png"),
         },
         {
           name: "Google",
+          thumbnail: require("../assets/images/google-thumbnail.png"),
         },
         {
           name: "WMTS",
+          thumbnail: require("../assets/images/wmts-thumbnail.png"),
         },
         {
           name: "None",
+          thumbnail: require("../assets/images/none-thumbnail.png"),
         },
       ],
 
@@ -550,14 +665,21 @@ export default {
     this.resetStatus();
   },
   methods: {
+    // 响应图层更新
+    onLayersUpdate() {
+      console.log("update");
+      console.log(this.layers);
+      // 改变图层顺序
+      this.layers.forEach((layer, index) => {
+        layer.layer.setZIndex(1000 - index);
+      });
+    },
+
     // 初始化地图
     initMap() {
-      let source = newBaseSource("OSM");
-
+      // 创建地图
       this.map = new Map({
-        // controls: defaultControls().extend([overviewMapControl]),
         target: "mapDom",
-        // layers: layers,
         view: new View({
           projection: "EPSG:3857",
           center: [12758612.973162018, 3562849.0216611675],
@@ -565,10 +687,10 @@ export default {
         }),
       });
 
+      // 设置底图
       this.setBasemap("Gaode");
 
-      console.log(this.map);
-
+      // 获取视图
       this.view = this.map.getView();
       this.zoom = this.view.getZoom();
       this.center = this.view.getCenter();
@@ -619,43 +741,6 @@ export default {
       // 控件添加到地图
       this.map.addControl(mousePos);
 
-      // // 增加鼠标悬停效果
-      // this.map.on("pointermove", (event) => {
-      //   let hoveredFeature = null;
-
-      //   let selected = false;
-
-      //   this.map.forEachFeatureAtPixel(event.pixel, (feature) => {
-      //     hoveredFeature = feature;
-      //   });
-
-      //   // 恢复除悬停要素外的样式
-      //   this.drawSource.getFeatures().forEach((feature) => {
-      //     selected = this.selectedFeatures.includes(feature);
-
-      //     if (feature !== hoveredFeature && !selected) {
-      //       feature.setStyle(this.myStyle);
-      //     }
-      //   });
-
-      //   // 设置悬停要素的样式
-      //   if (hoveredFeature) {
-      //     if (!selected) {
-      //       hoveredFeature.setStyle(
-      //         new Style({
-      //           stroke: new Stroke({
-      //             color: "yellow",
-      //             width: 2,
-      //           }),
-      //           fill: new Fill({
-      //             color: "rgba(255, 255, 0, 0.3)",
-      //           }),
-      //         })
-      //       );
-      //     }
-      //   }
-      // });
-
       this.select = new Select({
         condition: singleClick,
         // toggleCondition: always,
@@ -668,6 +753,12 @@ export default {
             color: "rgba(0, 0, 0, 0.7)",
             width: 2,
           }),
+          image: new Circle({
+            radius: 7,
+            fill: new Fill({
+              color: "rgba(0, 0, 0, 0.7)",
+            }),
+          }),
         }),
       });
 
@@ -677,6 +768,9 @@ export default {
     // 添加绘图图层
     addDrawLayer() {
       this.drawVector = new VectorLayer({
+        properties: {
+          name: "绘图图层",
+        },
         source: this.drawSource,
         //绘制好后，在地图上呈现的样式
         style: new Style({
@@ -696,12 +790,25 @@ export default {
             }),
           }),
         }),
+        zIndex: 1200,
       });
       this.map.addLayer(this.drawVector);
+
+      // 添加到图层管理动态数组
+      let length = this.layers.length + 1;
+      this.layers.unshift({
+        name: "绘图图层",
+        layer: this.drawVector,
+        index: length,
+      });
+      // 更新选中的图层
+      this.checks.push(this.drawVector.getProperties().name);
+      this.onLayersUpdate();
     },
 
     // 重置状态
     resetStatus() {
+      this.activeTool = null;
       this.map.removeInteraction(this.draw);
       this.map.removeInteraction(this.modify);
       this.map.removeInteraction(this.translate);
@@ -712,7 +819,6 @@ export default {
 
       // 禁用select交互
       this.select.setActive(false);
-      this.isSelecting = false;
 
       this.selectedFeatures = [];
 
@@ -722,6 +828,18 @@ export default {
           row.selected = false;
         }
       });
+
+      this.isShowingPopup = false;
+    },
+    // 切换图层管理界面的显示/隐藏状态
+    toggleLayerManager() {
+      this.layerManagerVisible = !this.layerManagerVisible;
+    },
+    // 切换图层的显示/隐藏状态
+    toggleLayer(layer) {
+      const layerName = layer.name;
+      const layerVisible = this.checks.includes(layerName);
+      layer.layer.setVisible(layerVisible);
     },
 
     // 加载 Geoserver Shapefile
@@ -733,12 +851,15 @@ export default {
       } else {
         let url;
         let workspace;
+        let layerName;
         switch (this.selectedDataType[0]) {
           case "landuse":
             workspace = "Landuse";
+            layerName = "土地利用";
             break;
           case "greenAccessibility":
             workspace = "GreenAccessibility";
+            layerName = "绿地可达性";
             break;
           case "greenEquity":
             workspace = "GreenEquity";
@@ -747,19 +868,19 @@ export default {
             workspace = "Others";
             break;
         }
-        url = `http://localhost:8080/geoserver/${workspace}/wms`;
+        url = `http://35.234.26.196:8080/geoserver/${workspace}/wms`;
         const params = {
           LAYERS: `${workspace}:${this.selectedDataType[0]}_${this.selectedDataType[1]}_${this.selectedPolicy}_${this.selectedYear}`,
           TILED: true,
           STYLES: `${this.selectedDataType[0]}_${this.selectedDataType[1]}_style`,
         };
         console.log(params);
-        if (this.shpLayer) {
-          this.map.removeLayer(this.shpLayer);
-        }
+
         this.shpLayer = new TileLayer({
           properties: {
-            name: `${this.selectedDataType[0]}_${this.selectedDataType[1]}_${this.selectedPolicy}_${this.selectedYear}`,
+            name:
+              layerName +
+              `_${this.selectedDataType[1]}_${this.selectedPolicy}_${this.selectedYear}`,
           },
           source: new TileWMS({
             url,
@@ -771,7 +892,17 @@ export default {
         });
 
         this.map.addLayer(this.shpLayer);
-        this.shpLayerList.push(this.shpLayer);
+        // 添加到图层管理动态数组
+        let length = this.layers.length + 1;
+        this.layers.unshift({
+          name: this.shpLayer.getProperties().name,
+          layer: this.shpLayer,
+          index: length,
+        });
+        // 更新选中的图层
+        this.checks.push(this.shpLayer.getProperties().name);
+        console.log(this.shpLayer.getProperties().name);
+        this.onLayersUpdate();
 
         let geojsonFilePath;
         if (this.selectedDataType[0] === "landuse") {
@@ -806,8 +937,10 @@ export default {
             drawLayer = new VectorLayer({
               source: drawSource,
               style: vectorStyle,
+              // visible: false,
             });
             drawLayer.setZIndex(1000);
+
             this.map.addLayer(drawLayer);
             this.map.getView().fit(drawSource.getExtent());
           })
@@ -815,6 +948,7 @@ export default {
             console.error("获取GeoJSON数据失败:", error);
           });
 
+        // 加载图例
         if (this.selectedDataType[0] === "landuse") {
           this.legendSrc = "/images/legend_landuse.png";
           this.isLegend = true;
@@ -905,12 +1039,15 @@ export default {
     // 切换建议显示
     toggleSeggestion() {
       const legend = document.querySelector(".legend");
+      const container = document.querySelector(".layer-manager-container");
       if (this.suggestionVisible) {
         this.suggestionVisible = false;
         legend.style.right = "45px";
+        container.style.right = "45px";
       } else {
         this.showSeggestion();
         legend.style.right = "25%";
+        container.style.right = "25%";
       }
     },
 
@@ -959,17 +1096,7 @@ export default {
         return;
       }
 
-      // let source = newBaseSource(name);
-
-      // console.log(source);
       let layer;
-
-      // layer = new TileLayer({
-      //   properties: {
-      //     name: name,
-      //   },
-      //   source: source,
-      // });
 
       layer = newLayer(name);
 
@@ -1003,6 +1130,7 @@ export default {
     // 绘制要素
     drawFeature(featureType = "") {
       this.resetStatus();
+      this.activeTool = featureType;
 
       this.draw = new Draw({
         source: this.drawSource,
@@ -1079,11 +1207,15 @@ export default {
       this.drawVector.getSource().clear();
       this.features = [];
       this.undoStack = [];
+
+      this.map.getOverlays().clear();
     },
 
     // 测距
     measureDistance() {
       this.resetStatus();
+      this.activeTool = "measureDistance";
+      // 启用draw交互
       this.measureInteraction = new Draw({
         source: this.drawSource,
         type: "LineString",
@@ -1097,19 +1229,18 @@ export default {
       });
       this.map.addInteraction(this.measureInteraction);
 
+      // 测量开始事件
       this.measureInteraction.on("drawstart", (event) => {
-        const measureTooltipElement = document.createElement("div");
-        measureTooltipElement.className = "ol-tooltip ol-tooltip-measure";
-        this.createMeasureTooltip(event.feature, measureTooltipElement);
+        // 清除上一次的测量结果
+        this.previousCoordinate = null;
+        // 实时显示总长
+        this.createMeasureTooltip(event.feature);
       });
 
+      // 测量结束事件
       this.measureInteraction.on("drawend", (event) => {
-        // this.measureInteraction.setActive(false);
-
-        // 获取绘制的要素
         const feature = event.feature;
-
-        // 设置要素的样式为虚线
+        // 设置样式
         feature.setStyle(
           new Style({
             stroke: new Stroke({
@@ -1119,11 +1250,14 @@ export default {
             }),
           })
         );
+        // 创建最终的tooltip
+        this.createFinalTooltip(feature);
       });
     },
 
-    createMeasureTooltip(feature, tooltipElement) {
-      const tooltipCoord = feature.getGeometry().getLastCoordinate();
+    createMeasureTooltip(feature) {
+      let tooltipElement = document.createElement("div");
+      tooltipElement.className = "ol-tooltip ol-tooltip-measure";
       tooltipElement.innerHTML = "起点";
 
       const tooltip = new Overlay({
@@ -1133,23 +1267,50 @@ export default {
       });
       this.map.addOverlay(tooltip);
 
-      let listener;
       feature.getGeometry().on("change", (evt) => {
         const geom = evt.target;
-        const output = this.formatLength(geom);
-        tooltipElement.innerHTML = output;
-        tooltip.setPosition(geom.getLastCoordinate());
-      });
+        const coordinates = geom.getCoordinates();
+        const totalLength = this.formatLength(geom);
 
-      feature.on("change", () => {
-        this.map.removeOverlay(tooltip);
-        unByKey(listener);
+        tooltipElement.innerHTML = `总长: ${totalLength}`;
+        tooltip.setPosition(coordinates[coordinates.length - 1]);
       });
     },
 
+    createFinalTooltip(feature) {
+      const geom = feature.getGeometry();
+      const coordinates = geom.getCoordinates();
+
+      // 对每一段长度进行计算
+      coordinates.forEach((coordinate, index) => {
+        if (index === 0) return; // 忽略第一个点
+
+        // 计算每一段的长度
+        const segmentLength = this.formatLength(
+          new LineString([coordinates[index - 1], coordinate])
+        );
+
+        // 创建tooltip，在中间结点处显示
+        let tooltipElement = document.createElement("div");
+        tooltipElement.className = "ol-tooltip ol-tooltip-measure";
+        tooltipElement.innerHTML = `段长: ${segmentLength}`;
+
+        const tooltip = new Overlay({
+          element: tooltipElement,
+          offset: [0, 15],
+          positioning: "bottom-center",
+        });
+
+        this.map.addOverlay(tooltip);
+        tooltip.setPosition(coordinate);
+      });
+    },
+
+    // 格式化长度
     formatLength(line) {
       const length = getLength(line);
       let output;
+      // 如果长度大于100米，转换为千米
       if (length > 100) {
         output = Math.round((length / 1000) * 100) / 100 + " km";
       } else {
@@ -1161,7 +1322,54 @@ export default {
     // 选择要素
     selectFeature() {
       this.resetStatus();
-      this.isSelecting = true;
+      this.activeTool = "selectFeature";
+
+      // 启用select交互
+      this.select.setActive(true);
+
+      this.select.on("select", (e) => {
+        e.target
+          .getFeatures()
+          .getArray()
+          .forEach((item) => {
+            console.log(item.values_);
+          });
+      });
+
+      this.select.on("select", (event) => {
+        const selected = event.selected;
+        const deselected = event.deselected;
+
+        // 选中要素
+        selected.forEach((feature) => {
+          this.selectedFeatures.push(feature);
+          this.features.forEach((row) => {
+            if (row.id === feature.getId()) {
+              row.selected = true;
+            }
+          });
+        });
+
+        // 取消选中要素
+        deselected.forEach((feature) => {
+          this.selectedFeatures = this.selectedFeatures.filter(
+            (item) => item !== feature
+          );
+          this.features.forEach((row) => {
+            if (row.id === feature.getId()) {
+              row.selected = false;
+            }
+          });
+        });
+      });
+    },
+
+    // 查看地块详情
+    checkArea() {
+      this.resetStatus();
+      this.activeTool = "checkArea";
+
+      this.isShowingPopup = true;
 
       // 启用select交互
       this.select.setActive(true);
@@ -1172,11 +1380,11 @@ export default {
 
       const overlay = new Overlay({
         element: container,
-        autoPan: {
-          animation: {
-            duration: 250,
-          },
-        },
+        // autoPan: {
+        //   animation: {
+        //     duration: 250,
+        //   },
+        // },
       });
 
       closer.onclick = function () {
@@ -1189,7 +1397,6 @@ export default {
 
       // 选中要素事件
       // 存储选中的要素
-
       this.select.on("select", function (e) {
         e.target
           .getFeatures()
@@ -1221,6 +1428,7 @@ export default {
           });
       });
 
+      // 单击地图事件
       this.map.on("singleclick", function (evt) {
         const coordinate = evt.coordinate;
         const hdms = toStringHDMS(toLonLat(coordinate));
@@ -1231,7 +1439,9 @@ export default {
 
     // 平移要素
     translateFeature() {
-      this.map.removeInteraction(this.draw);
+      this.resetStatus();
+
+      this.activeTool = "translateFeature";
 
       this.draw = new Select({
         wrapX: false,
@@ -1261,8 +1471,8 @@ export default {
 
     // 编辑节点
     editVertices() {
-      this.map.removeInteraction(this.draw);
-      this.map.removeInteraction(this.modify);
+      this.resetStatus();
+      this.activeTool = "editVertices";
 
       this.modify = new Modify({
         source: this.drawSource,
@@ -1289,20 +1499,9 @@ export default {
     // 旋转要素
     rotateFeature() {
       this.resetStatus();
+      this.activeTool = "rotateFeature";
 
-      // this.draw = new Select({
-      //   wrapX: false,
-      // });
-
-      // this.map.addInteraction(this.draw);
-
-      // this.draw.on("select", (event) => {
-      //   if (event.selected.length > 0) {
-      //     const feature = event.selected[0];
-      //     this.enableFeatureRotate(feature);
-      //   }
-      // });
-
+      // 对每个要素启用旋转
       this.features.forEach((row) => {
         const feature = this.drawSource.getFeatureById(row.id);
         if (feature) {
@@ -1310,11 +1509,14 @@ export default {
         }
       });
 
+      // 初始化默认样式
       this.defaultStyle = new Modify({ source: this.drawVector.getSource() })
         .getOverlay()
         .getStyleFunction();
     },
+    // 旋转要素
     enableFeatureRotate(feature) {
+      // 旋转交互
       this.transform = new Modify({
         source: this.drawSource,
         features: new Collection([feature]),
@@ -1323,12 +1525,15 @@ export default {
         },
         deleteCondition: never,
         insertVertexCondition: never,
+        // 旋转样式
         style: (feature) => {
           feature.get("features").forEach((modifyFeature) => {
             const modifyGeometry = modifyFeature.get("modifyGeometry");
+            // 如果有旋转要素，则进行旋转
             if (modifyGeometry) {
               const point = feature.getGeometry().getCoordinates();
               let modifyPoint = modifyGeometry.point;
+              // 如果没有旋转点，则设置旋转点
               if (!modifyPoint) {
                 modifyPoint = point;
                 modifyGeometry.point = modifyPoint;
@@ -1337,7 +1542,7 @@ export default {
                 modifyGeometry.center = result.center;
                 modifyGeometry.minRadius = result.minRadius;
               }
-
+              // 计算旋转中心，最小半径，坐标
               const center = modifyGeometry.center;
               const minRadius = modifyGeometry.minRadius;
               const coordinates = modifyGeometry.geometry.getCoordinates();
@@ -1368,8 +1573,10 @@ export default {
         },
       });
 
+      // 添加旋转交互
       this.map.addInteraction(this.transform);
       this.transform.on("modifystart", (event) => {
+        // 保存旋转前的要素
         event.features.forEach((feature) => {
           feature.set(
             "modifyGeometry",
@@ -1379,8 +1586,10 @@ export default {
         });
       });
 
+      // 旋转结束
       this.transform.on("modifyend", (event) => {
         event.features.forEach((feature) => {
+          // 旋转结束后，删除旋转前的要素
           const modifyGeometry = feature.get("modifyGeometry");
           if (modifyGeometry) {
             feature.setGeometry(modifyGeometry.geometry);
@@ -1388,8 +1597,6 @@ export default {
           }
         });
       });
-
-      // this.changeInteraction();
     },
     calculateCenter(geometry) {
       let center, coordinates, minRadius;
@@ -1441,12 +1648,12 @@ export default {
       this.view.setZoom(isZoomIn ? curZoom + 1 : curZoom - 1);
     },
 
-    // 移动到武汉
+    // 移动到深圳
     onMoveWh() {
       if (!this.view) return;
       console.log(this.view);
-      this.view.setCenter([12732996.6685, 3551713.9202]);
-      this.view.setZoom(12);
+      this.view.setCenter([12709423.397, 2591463.4625]);
+      this.view.setZoom(11);
     },
 
     // 打开文件上传
@@ -1496,6 +1703,7 @@ export default {
         }
       }
     },
+    // 加载 GeoJSON 文件
     loadJsonFile(content) {
       const format = new GeoJSON();
       const features = format.readFeatures(content);
@@ -1519,20 +1727,26 @@ export default {
         console.error("No features found in the uploaded file.");
       }
     },
+    // 异步加载 Shapefile
     async loadShapefile(file) {
       const reader = new FileReader();
       reader.onload = async (e) => {
+        // 读取文件
         const arrayBuffer = e.target.result;
+        // 转换为 GeoJSON
         const geojsons = await this.convertShpToGeoJSON(arrayBuffer);
         this.displayGeojson(geojsons);
       };
       reader.readAsArrayBuffer(file);
     },
+    // 异步转换 Shapefile 为 GeoJSON
     async convertShpToGeoJSON(arrayBuffer) {
+      // 调用 shp.js
       const shpData = await shp(arrayBuffer);
+      // 用于存储多个GeoJSON
       let geojsons = [];
 
-      // 检查是否为数组
+      // 检查是否为数组，如果不是则转换为数组，统一添加到geojsons
       if (!Array.isArray(shpData)) {
         const geojson = new GeoJSON().readFeatures(shpData);
         geojsons.push(...geojson);
@@ -1587,7 +1801,7 @@ export default {
         this.features.push({
           id: geojson.getId(),
           type: geojson.getGeometry().getType(),
-          area: 0,
+          area: geojson.getGeometry().getArea(),
           selected: false,
         });
 
@@ -1954,5 +2168,72 @@ export default {
   /* 激活状态样式 */
   background-color: #409eff;
   color: #fff;
+}
+
+.layer-manager-container {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+}
+
+.toggle-button {
+  position: absolute;
+  top: 35px;
+  right: 10px;
+  z-index: 1100;
+}
+
+.layer-manager {
+  position: absolute;
+  top: 35px;
+  right: 10px;
+  width: 300px;
+  z-index: 1000;
+}
+
+.layer-card {
+  background-color: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.layer-card .header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 10px 16px;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.layer-card .close-button {
+  color: #ff4d4f;
+}
+
+.layer-checkbox-group {
+  padding: 10px 16px;
+}
+
+.layer-checkbox {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+/* Transition for slide effect */
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+  transition: all 0.5s ease;
+}
+.slide-fade-enter, .slide-fade-leave-to /* .slide-fade-leave-active in <2.1.8 */ {
+  transform: translateY(-10px);
+  opacity: 0;
+}
+
+.ghost {
+  opacity: 0.5;
+  background: #c8ebfb;
 }
 </style>

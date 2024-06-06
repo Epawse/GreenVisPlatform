@@ -131,12 +131,9 @@ function createLyrWMTS() {
 }
 
 function newLayer(name) {
-  // let source;
   let layer;
-
   switch (name) {
     case "OSM":
-      // source = new OSM();
       layer = new TileLayer({
         properties: {
           name: "osm",
@@ -145,6 +142,17 @@ function newLayer(name) {
         source: new OSM(),
       });
 
+      break;
+    case "Gaode":
+      layer = new TileLayer({
+        properties: {
+          name: "gaode",
+          title: "高德地图",
+        },
+        source: new XYZ({
+          url: "http://webrd0{1-4}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scl=1&style=8&lstyle=7&x={x}&y={y}&z={z}",
+        }),
+      });
       break;
     case "ArcGIS":
       layer = new TileLayer({
@@ -168,17 +176,6 @@ function newLayer(name) {
         source: new XYZ({
           projection: "EPSG:4326",
           url: `http://t{0-7}.tianditu.gov.cn/vec_c/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=c&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=${tianKey}`,
-        }),
-      });
-      break;
-    case "Gaode":
-      layer = new TileLayer({
-        properties: {
-          name: "gaode",
-          title: "高德地图",
-        },
-        source: new XYZ({
-          url: "http://webrd0{1-4}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scl=1&style=8&lstyle=7&x={x}&y={y}&z={z}",
         }),
       });
       break;

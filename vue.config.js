@@ -12,6 +12,7 @@ module.exports = {
     client: {
       overlay: false,
     },
+    // 代理
     proxy: {
       "/geoserver": {
         target: "http://localhost:8080",
@@ -20,6 +21,7 @@ module.exports = {
       },
     },
   },
-  publicPath:
-    process.env.NODE_ENV === "production" ? "/GreenVisPlatform/" : "/",
+  // publicPath:
+  //   process.env.NODE_ENV === "production" ? "/GreenVisPlatform/" : "/",
+  publicPath: "/",
 };

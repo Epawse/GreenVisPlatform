@@ -5,6 +5,10 @@ import testWMTS from "../views/testWMTS.vue";
 import testWFS from "../views/testWFS.vue";
 const routes = [
   {
+    path: "/",
+    redirect: "/map",
+  },
+  {
     path: "/map",
     name: "map",
     component: Map,
@@ -27,3 +31,5 @@ const router = createRouter({
 });
 
 export default router;
+
+

@@ -18,11 +18,11 @@ import { GeoJSON } from "ol/format";
 import { bbox } from "ol/loadingstrategy";
 import { Style, Stroke, Circle, Fill } from "ol/style";
 import { Projection } from "ol/proj";
-
+import { bbox as bboxStrategy } from "ol/loadingstrategy";
 export default {
   methods: {
     init() {
-      const url = "http://localhost:8080/geoserver/Landuse/ows";
+      const url = "http://35.234.26.196:8080/geoserver/GreenAccessibility/ows";
       let wfsVectorLayer = new VectorLayer({
         properties: {
           name: "wfs",
@@ -34,31 +34,29 @@ export default {
             return (
               url +
               "?service=WFS&" +
-              "version=1.0.0&request=GetFeature&typename=Landuse:landuse_predict_noFactor_2030&" +
-              "outputFormat=application/json&srsname=EPSG:4326&" +
-              "bbox=" +
-              extent.join(",") +
-              ",EPSG:4326"
+              "version=1.0.0&request=GetFeature&typename=GreenAccessibility:greenAccessibility_sum_noFactor_2030	&" +
+              "maxFeatures=10000&" +
+              "outputFormat=application/json"
             );
           },
-          strategy: bbox,
+          strategy: bboxStrategy,
         }),
-
-        visible: true,
       });
+
+      console.log(wfsVectorLayer);
 
       let map = new Map({
         layers: [
           new TileLayer({
-            source: new OSM(), //这个会出现底图
+            source: new OSM(),
           }),
           wfsVectorLayer,
         ],
         target: "map",
         view: new View({
           projection: "EPSG:4326",
-          center: [114, 22],
-          zoom: 12,
+          center: [114.169, 22.6676],
+          zoom: 11,
         }),
       });
     },
