@@ -47,7 +47,7 @@ export default {
         "EPSG:4326:20",
         "EPSG:4326:21",
       ];
-      var baseUrl = "http://localhost:8080/geoserver/gwc/service/wmts";
+      var baseUrl = "http://35.234.26.196:8080/geoserver/gwc/service/wmts";
       var style = "";
       var format = "image/png";
       var infoFormat = "text/html";
