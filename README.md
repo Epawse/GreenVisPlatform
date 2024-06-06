@@ -1,4 +1,4 @@
-# webgis
+# 城市绿色空间展示平台
 
 ## Project setup
 ```
@@ -15,10 +15,19 @@ npm run serve
 npm run build
 ```
 
-### Lints and fixes files
+### Deploy
 ```
-npm run lint
+npm run deploy
 ```
 
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
+### Build and deploy
+```
+npm run build-and-deploy
+```
+
+
+
+### Demo 
+
+http://www.greenviz.top/
+
