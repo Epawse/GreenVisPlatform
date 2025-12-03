@@ -710,15 +710,136 @@ export default {
     },
     
     rotateFeature() {
-        this.resetStatus();
-        this.activeTool = "rotateFeature";
-        // Rotate logic (simplified: assume enableFeatureRotate is implemented or simplified)
-         this.select.setActive(true);
-         // Note: Full rotate logic from original file was complex. 
-         // For brevity and safety, I'll rely on standard modify or re-implement if strictly needed.
-         // The user asked for UI beautification, so missing complex rotate logic is acceptable if it avoids bugs.
-         // But to be safe, I'll leave a placeholder or standard interaction.
-         ElMessage.info("旋转功能优化中");
+      this.resetStatus();
+      this.activeTool = "rotateFeature";
+
+      // 对每个要素启用旋转
+      this.features.forEach((row) => {
+        const feature = this.drawSource.getFeatureById(row.id);
+        if (feature) {
+          this.enableFeatureRotate(feature);
+        }
+      });
+
+      // 初始化默认样式
+      this.defaultStyle = new Modify({ source: this.drawSource })
+        .getOverlay()
+        .getStyleFunction();
+    },
+
+    enableFeatureRotate(feature) {
+      // 旋转交互
+      this.transform = new Modify({
+        source: this.drawSource,
+        features: new Collection([feature]),
+        condition: (event) => {
+          return primaryAction(event) && !platformModifierKeyOnly(event);
+        },
+        deleteCondition: never,
+        insertVertexCondition: never,
+        // 旋转样式
+        style: (feature) => {
+          feature.get("features").forEach((modifyFeature) => {
+            const modifyGeometry = modifyFeature.get("modifyGeometry");
+            // 如果有旋转要素，则进行旋转
+            if (modifyGeometry) {
+              const point = feature.getGeometry().getCoordinates();
+              let modifyPoint = modifyGeometry.point;
+              // 如果没有旋转点，则设置旋转点
+              if (!modifyPoint) {
+                modifyPoint = point;
+                modifyGeometry.point = modifyPoint;
+                modifyGeometry.geometry0 = modifyGeometry.geometry;
+                const result = this.calculateCenter(modifyGeometry.geometry0);
+                modifyGeometry.center = result.center;
+                modifyGeometry.minRadius = result.minRadius;
+              }
+              // 计算旋转中心，最小半径，坐标
+              const center = modifyGeometry.center;
+              const minRadius = modifyGeometry.minRadius;
+              const coordinates = modifyGeometry.geometry.getCoordinates();
+              let dx, dy;
+              dx = modifyPoint[0] - center[0];
+              dy = modifyPoint[1] - center[1];
+              const initialRadius = Math.sqrt(dx * dx + dy * dy);
+              if (initialRadius > minRadius) {
+                const initialAngle = Math.atan2(dy, dx);
+                dx = point[0] - center[0];
+                dy = point[1] - center[1];
+                const currentRadius = Math.sqrt(dx * dx + dy * dy);
+                if (currentRadius > 0) {
+                  const currentAngle = Math.atan2(dy, dx);
+                  const geometry = modifyGeometry.geometry0.clone();
+                  geometry.scale(currentRadius / initialRadius, undefined, center);
+                  geometry.rotate(currentAngle - initialAngle, center);
+                  modifyGeometry.geometry = geometry;
+                }
+              }
+            }
+          });
+          return this.defaultStyle(feature);
+        },
+      });
+
+      // 添加旋转交互
+      this.map.addInteraction(this.transform);
+      this.transform.on("modifystart", (event) => {
+        // 保存旋转前的要素
+        event.features.forEach((feature) => {
+          feature.set("modifyGeometry", { geometry: feature.getGeometry().clone() }, true);
+        });
+      });
+
+      // 旋转结束
+      this.transform.on("modifyend", (event) => {
+        event.features.forEach((feature) => {
+          // 旋转结束后，删除旋转前的要素
+          const modifyGeometry = feature.get("modifyGeometry");
+          if (modifyGeometry) {
+            feature.setGeometry(modifyGeometry.geometry);
+            feature.unset("modifyGeometry", true);
+          }
+        });
+      });
+    },
+
+    calculateCenter(geometry) {
+      let center, coordinates, minRadius;
+      const type = geometry.getType();
+      if (type === "Polygon") {
+        let x = 0;
+        let y = 0;
+        let i = 0;
+        coordinates = geometry.getCoordinates()[0].slice(1);
+        coordinates.forEach((coordinate) => {
+          x += coordinate[0];
+          y += coordinate[1];
+          i++;
+        });
+        center = [x / i, y / i];
+      } else if (type === "LineString") {
+        center = geometry.getCoordinateAt(0.5);
+        coordinates = geometry.getCoordinates();
+      } else {
+        center = getCenter(geometry.getExtent());
+      }
+      let sqDistances;
+      if (coordinates) {
+        sqDistances = coordinates.map((coordinate) => {
+          const dx = coordinate[0] - center[0];
+          const dy = coordinate[1] - center[1];
+          return dx * dx + dy * dy;
+        });
+        minRadius = Math.sqrt(Math.max.apply(Math, sqDistances)) / 3;
+      } else {
+        minRadius = Math.max(getWidth(geometry.getExtent()), getHeight(geometry.getExtent())) / 3;
+      }
+      return {
+        center: center,
+        coordinates: coordinates,
+        minRadius: minRadius,
+        sqDistances: sqDistances,
+      };
     },
 
     // View Actions
