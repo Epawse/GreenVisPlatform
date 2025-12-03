@@ -1,8 +1,10 @@
 import { createRouter, createWebHistory } from "vue-router";
 
-import Map from "../views/Map.vue";
-import testWMTS from "../views/testWMTS.vue";
-import testWFS from "../views/testWFS.vue";
+// 使用懒加载优化首屏加载
+const Map = () => import("../views/Map.vue");
+const testWMTS = () => import("../views/testWMTS.vue");
+const testWFS = () => import("../views/testWFS.vue");
+
 const routes = [
   {
     path: "/",
@@ -31,5 +33,3 @@ const router = createRouter({
 });
 
 export default router;
-
-

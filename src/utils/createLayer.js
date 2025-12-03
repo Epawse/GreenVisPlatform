@@ -65,10 +65,7 @@ const createLyrBd = () => {
         if (!tileCoord) return "";
 
         let tempUrl = url;
-        tempUrl = tempUrl.replace(
-          "{x}",
-          tileCoord[1] < 0 ? `M${-tileCoord[1]}` : tileCoord[1]
-        );
+        tempUrl = tempUrl.replace("{x}", tileCoord[1] < 0 ? `M${-tileCoord[1]}` : tileCoord[1]);
         tempUrl = tempUrl.replace(
           "{y}",
           tileCoord[2] < 0 ? `M${tileCoord[2] + 1}` : -(tileCoord[2] + 1)
@@ -117,8 +114,7 @@ const createLyrOSM = () => {
 // 5-创建Bing地图
 const createLyrBing = () => {
   // 你的key, 如AvehefmVM_surC2UyDjyO2T_EvSgRUA9Te3_9D_xxxxxxx
-  const key =
-    "AvehefmVM_surC2UyDjyO2T_EvSgRUA9Te3_9D_sj88ZYEBNNWxaufCSPGzecf-B";
+  const key = "AvehefmVM_surC2UyDjyO2T_EvSgRUA9Te3_9D_sj88ZYEBNNWxaufCSPGzecf-B";
   return new TileLayer({
     properties: {
       name: "bing",

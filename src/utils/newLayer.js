@@ -3,12 +3,7 @@ import { BingMaps } from "ol/source";
 import { Vector as VectorSource } from "ol/source";
 import { GeoJSON } from "ol/format";
 import TileLayer from "ol/layer/Tile.js";
-import {
-  addCoordinateTransforms,
-  addProjection,
-  Projection,
-  transform,
-} from "ol/proj";
+import { addCoordinateTransforms, addProjection, Projection, transform } from "ol/proj";
 import { TileGrid } from "ol/tilegrid";
 import { TileImage } from "ol/source";
 import Tile from "ol/layer/Tile"; // 瓦片渲染方法
@@ -20,8 +15,15 @@ import WMTS from "ol/source/WMTS.js";
 import WMTSTileGrid from "ol/tilegrid/WMTS.js";
 
 let tianKey = "719a5d3d8f259e8c5554d3fbb491fbdb";
-let bingKey =
-  "AvehefmVM_surC2UyDjyO2T_EvSgRUA9Te3_9D_sj88ZYEBNNWxaufCSPGzecf-B";
+let bingKey = "AvehefmVM_surC2UyDjyO2T_EvSgRUA9Te3_9D_sj88ZYEBNNWxaufCSPGzecf-B";
+
+// 通用瓦片图层性能优化配置
+const tileLayerConfig = {
+  // 预加载瓦片数量，设为0提高性能（不预加载）
+  preload: 0,
+  // 使用中间瓦片作为占位符，在新瓦片加载时显示
+  useInterimTilesOnError: false,
+};
 
 function createLyrBd() {
   let projBD09 = new Projection({
@@ -89,6 +91,7 @@ function createLyrBd() {
 
   let baidu_layer = new Tile({
     source: baidu_source,
+    ...tileLayerConfig, // 应用性能优化配置
   });
 
   return baidu_layer;
@@ -140,6 +143,7 @@ function newLayer(name) {
           title: "OpenStreetMap地图",
         },
         source: new OSM(),
+        ...tileLayerConfig, // 性能优化
       });
 
       break;
@@ -152,6 +156,7 @@ function newLayer(name) {
         source: new XYZ({
           url: "http://webrd0{1-4}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scl=1&style=8&lstyle=7&x={x}&y={y}&z={z}",
         }),
+        ...tileLayerConfig, // 性能优化
       });
       break;
     case "ArcGIS":
@@ -164,6 +169,7 @@ function newLayer(name) {
           url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
           maxZoom: 19,
         }),
+        ...tileLayerConfig, // 性能优化
       });
       break;
 
@@ -177,6 +183,7 @@ function newLayer(name) {
           projection: "EPSG:4326",
           url: `http://t{0-7}.tianditu.gov.cn/vec_c/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=c&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=${tianKey}`,
         }),
+        ...tileLayerConfig, // 性能优化
       });
       break;
     case "Google":
@@ -189,6 +196,7 @@ function newLayer(name) {
           url: "http://mt{0-3}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}",
           projection: "EPSG:3857",
         }),
+        ...tileLayerConfig, // 性能优化
       });
       break;
 
@@ -198,6 +206,7 @@ function newLayer(name) {
           name: "bing",
           title: "Bing地图",
         },
+        ...tileLayerConfig, // 性能优化
         source: new BingMaps({
           key: bingKey,
           imagerySet: "RoadOnDemand",
