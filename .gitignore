@@ -31,3 +31,7 @@ chat-*.txt
 webgis实习.txt
 openspec/
 *.log
+
+# Dev Docs
+*_OPTIMIZATION.md
+*_GUIDE.md
