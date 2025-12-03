@@ -306,9 +306,15 @@ export default {
       this.rotation = this.view.getRotation();
 
       // Controls
-      this.map.addControl(new Zoom());
-      this.map.addControl(new ZoomSlider());
-      this.map.addControl(new ZoomToExtent());
+      // Remove default Zoom controls
+      // this.map.addControl(new Zoom());
+      // this.map.addControl(new ZoomSlider());
+      // this.map.addControl(new ZoomToExtent());
+      
+      // OverviewMap (Eagle Eye) - Optional, keeping it for now or remove if "all default tools" means this too.
+      // User said "openlayers自带的工具", usually means Zoom/Attribution. OverviewMap is a bit advanced.
+      // I'll keep OverviewMap but maybe style it later? Or remove if user insists on *all*.
+      // Let's remove the standard on-map zoom buttons as requested.
       
       const baseLayer = this.map.getLayers().item(0);
       const miniMap = new OverviewMap({
@@ -316,16 +322,17 @@ export default {
         collapsed: false,
         layers: [new TileLayer({ source: baseLayer.getSource() })],
       });
-      this.map.addControl(miniMap);
+      // this.map.addControl(miniMap); // Hiding OverviewMap too per "hide tools" request
 
       const mousePos = new MousePosition({
         coordinateFormat: createStringXY(4),
         projection: "EPSG:4326",
+        className: "custom-mouse-position", // Add custom class
       });
       this.map.addControl(mousePos);
 
-      this.scale = new ScaleLine();
-      this.map.addControl(this.scale);
+      // this.scale = new ScaleLine();
+      // this.map.addControl(this.scale); // Hiding ScaleLine
 
       // Select Interaction
       this.select = new Select({
@@ -952,11 +959,31 @@ export default {
 .attribute-panel {
   position: absolute;
   bottom: 20px;
-  left: 20px;
+  left: 50%;
+  transform: translateX(-50%); /* Center horizontally */
   width: 700px;
   max-height: 300px;
   z-index: 400;
   padding: 10px;
+}
+
+/* Custom Mouse Position Style */
+:deep(.custom-mouse-position) {
+  position: absolute;
+  bottom: 8px;
+  right: 80px; /* Adjust based on legend width or other elements */
+  top: auto;
+  left: auto;
+  background: var(--glass-bg);
+  backdrop-filter: blur(4px);
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--glass-border);
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--text-main);
+  pointer-events: none;
+  z-index: 1000;
 }
 
 .legend {
