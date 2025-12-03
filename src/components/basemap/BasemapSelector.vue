@@ -75,37 +75,59 @@ const handleBasemapClick = (name) => {
 
 <style scoped>
 .basemap-container {
-  /* 底图选择容器样式 */
   position: absolute;
-  top: 10px;
+  top: 100px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 1000;
-  background-color: #fff;
-  padding: 10px;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 16px;
   display: flex;
+  gap: 12px;
+  
+  /* Glassmorphism */
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  border-radius: var(--panel-radius);
+  
+  /* Animation */
+  transition: all var(--transition-speed) ease;
 }
 
 .basemap-item {
-  /* 底图选项样式 */
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-right: 10px;
   cursor: pointer;
+  transition: transform 0.2s;
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.basemap-item:hover {
+  transform: translateY(-4px);
+  background: rgba(255, 255, 255, 0.4);
 }
 
 .basemap-item img {
-  width: 80px;
-  height: 80px;
+  width: 64px;
+  height: 64px;
   object-fit: cover;
-  border-radius: 4px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  transition: border-color 0.2s;
+}
+
+.basemap-item:hover img {
+  border-color: var(--primary-color);
 }
 
 .basemap-item span {
-  margin-top: 5px;
+  margin-top: 6px;
   font-size: 12px;
+  color: var(--text-main);
+  font-weight: 500;
 }
 </style>

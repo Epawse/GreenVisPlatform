@@ -8,6 +8,7 @@ import zhCn from "element-plus/dist/locale/zh-cn";
 // 引入ol样式，类文件按需引入
 import "ol/ol.css";
 
+import "./styles/index.css"; // Global Styles
 import App from "./App.vue";
 import router from "./router";
 import store from "./store";

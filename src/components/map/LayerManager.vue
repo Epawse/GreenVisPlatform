@@ -70,92 +70,86 @@ function handleToggleLayer(layer) {
 <style scoped>
 .layer-manager-container {
   position: absolute;
-  top: 50%;
-  right: 45px;
-  transform: translateY(-50%);
+  top: 110px; /* Below header */
+  right: 20px;
   z-index: 200;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  transition: all var(--transition-speed) ease;
 }
 
 .toggle-button {
-  width: 40px;
-  height: 60px;
+  width: 32px;
+  height: 32px;
   padding: 0;
-  font-size: 16px;
-  font-weight: bold;
-  border-radius: 8px 0 0 8px;
-  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  border-radius: 50%;
+  margin-right: 8px;
+  background-color: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  color: var(--primary-color);
+  box-shadow: var(--glass-shadow);
+}
+
+.toggle-button:hover {
+  background-color: var(--primary-color);
+  color: white;
 }
 
 .layer-manager {
-  margin-right: 10px;
+  margin-right: 0;
 }
 
 .layer-card {
-  width: 280px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
+  width: 260px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  border-radius: var(--panel-radius);
+  /* Override Element Card styles */
+  --el-card-border-color: transparent;
+  --el-card-bg-color: transparent;
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-weight: bold;
-  font-size: 16px;
-  color: #333;
-}
-
-.layer-checkbox-group {
-  display: flex;
-  flex-direction: column;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text-main);
 }
 
 .draggable-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 16px;
+  padding: 8px 0;
   max-height: 400px;
   overflow-y: auto;
-  background-color: rgba(128, 128, 128, 0.05);
-  border-radius: 4px;
 }
 
 .layer-checkbox {
-  padding: 10px;
-  background: white;
-  border: 1px solid #e4e7ed;
-  border-radius: 4px;
-  cursor: move;
-  transition: all 0.3s;
+  margin: 0;
+  padding: 8px 12px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  transition: all 0.2s;
 }
 
 .layer-checkbox:hover {
-  background: #f5f7fa;
-  border-color: #409eff;
-  box-shadow: 0 2px 4px rgba(64, 158, 255, 0.1);
+  background: white;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
 }
 
-.ghost {
-  opacity: 0.5;
-  background: #c8e1ff;
-}
-
-/* 过渡动画 */
-.slide-fade-enter-active,
-.slide-fade-leave-active {
-  transition: all 0.3s ease;
-}
-
-.slide-fade-enter-from {
-  transform: translateX(100%);
-  opacity: 0;
-}
-
-.slide-fade-leave-to {
-  transform: translateX(100%);
-  opacity: 0;
+:deep(.el-checkbox__label) {
+  font-size: 13px;
 }
 </style>

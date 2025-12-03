@@ -1,0 +1,71 @@
+:root {
+  /* GreenVis Theme Palette */
+  --primary-color: #2E7D32; /* Emerald 800 */
+  --primary-light: #4CAF50; /* Emerald 500 */
+  --primary-dark: #1B5E20; /* Emerald 900 */
+  --accent-color: #FFC107; /* Amber 500 */
+  
+  --bg-color: #F5F7FA;
+  --text-main: #2c3e50;
+  --text-secondary: #606266;
+  
+  --glass-bg: rgba(255, 255, 255, 0.9);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+  
+  --panel-radius: 12px;
+  --transition-speed: 0.3s;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+}
+
+/* Glassmorphism Utility Class */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  border-radius: var(--panel-radius);
+}
+
+/* Modern Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #bdc3c7;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #95a5a6;
+}
+
+/* Element Plus Overrides for Theme */
+.el-button--primary {
+  --el-button-bg-color: var(--primary-color);
+  --el-button-border-color: var(--primary-color);
+  --el-button-hover-bg-color: var(--primary-light);
+  --el-button-hover-border-color: var(--primary-light);
+}
+
+.el-radio-button__original-radio:checked + .el-radio-button__inner {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  box-shadow: -1px 0 0 0 var(--primary-color);
+}
+
+.el-switch.is-checked .el-switch__core {
+  border-color: var(--primary-color);
+  background-color: var(--primary-color);
+}

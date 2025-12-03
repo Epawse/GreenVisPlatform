@@ -107,42 +107,67 @@ function handleLoadShp() {
 <style scoped>
 .header {
   position: fixed;
-  width: 100%;
-  height: 90px;
-  top: 0;
-  left: 0;
+  width: calc(100% - 40px);
+  height: 70px;
+  top: 20px;
+  left: 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 30px;
-  background: linear-gradient(to right, #409eff, #67c23a);
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  padding: 0 24px;
   z-index: 1000;
+  box-sizing: border-box;
+  
+  /* Apply Glassmorphism */
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  border-radius: var(--panel-radius);
+  transition: all var(--transition-speed) ease;
 }
 
 .logo {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 24px;
-  font-weight: bold;
-  color: white;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--primary-dark);
+  user-select: none;
 }
 
 .logo-icon {
-  width: 50px;
-  height: 50px;
+  width: 40px;
+  height: 40px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
 }
 
 .nav {
   display: flex;
-  gap: 15px;
+  gap: 12px;
   align-items: center;
 }
 
-.el-button.active {
-  background-color: #ffcc33;
-  border-color: #ffcc33;
-  color: #333;
+/* Custom Button Styles for Header */
+.nav .el-button {
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.nav .el-button.active {
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
+  color: #fff;
+}
+
+/* Make inputs blend in */
+:deep(.el-input__wrapper) {
+  background-color: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 0 0 1px #dcdfe6 inset;
+}
+:deep(.el-input__wrapper:hover) {
+  box-shadow: 0 0 0 1px var(--primary-color) inset;
 }
 </style>
