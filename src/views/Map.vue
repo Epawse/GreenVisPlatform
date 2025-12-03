@@ -953,7 +953,7 @@ export default {
   position: absolute;
   bottom: 20px;
   left: 20px;
-  width: 400px;
+  width: 700px;
   max-height: 300px;
   z-index: 400;
   padding: 10px;
