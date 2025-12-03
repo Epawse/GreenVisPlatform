@@ -163,5 +163,26 @@ export const useMapStore = defineStore('map', () => {
     setZoom,
     setCenter,
     fitExtent,
+    setMapInstance,
   }
 })
+
+function setMapInstance(map) {
+  mapInstance.value = map
+  view.value = map.getView()
+  
+  // 绑定视图事件监听
+  if (view.value) {
+    view.value.on('change:zoom', () => {
+      zoom.value = view.value.getZoom()
+    })
+    view.value.on('change:center', () => {
+      center.value = view.value.getCenter()
+    })
+    view.value.on('change:rotation', () => {
+      rotation.value = view.value.getRotation()
+    })
+  }
+  
+  console.log('Map instance set in store')
+}
