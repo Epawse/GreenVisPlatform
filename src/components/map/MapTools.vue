@@ -87,6 +87,22 @@
          <el-button @click="$emit('command', 'checkArea')" :class="{ active: activeTool === 'checkArea' }">信息</el-button>
       </el-button-group>
     </div>
+
+    <!-- Data Tools -->
+    <div class="tool-group glass-panel">
+      <div class="group-title">数据</div>
+      <el-button-group vertical>
+        <el-tooltip content="上传 GeoJSON/Shapefile" placement="right" :show-after="500">
+          <el-button @click="$emit('command', 'openFileUpload')">上传</el-button>
+        </el-tooltip>
+        <el-tooltip content="测试 WMTS 服务" placement="right" :show-after="500">
+          <el-button @click="$emit('command', 'testWMTS')">WMTS</el-button>
+        </el-tooltip>
+        <el-tooltip content="测试 WFS 服务" placement="right" :show-after="500">
+          <el-button @click="$emit('command', 'testWFS')">WFS</el-button>
+        </el-tooltip>
+      </el-button-group>
+    </div>
   </div>
 </template>
 

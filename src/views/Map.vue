@@ -865,6 +865,128 @@ export default {
          });
     },
 
+    // File Upload
+    openFileUpload() {
+        // Create a hidden file input and trigger click
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json,.geojson,.zip';
+        input.style.display = 'none';
+        input.onchange = this.onFileUpload;
+        document.body.appendChild(input);
+        input.click();
+        // Cleanup after click (timeout to ensure event fires)
+        setTimeout(() => document.body.removeChild(input), 1000);
+    },
+
+    onFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      const fileName = file.name.toLowerCase();
+      if (fileName.endsWith(".json") || fileName.endsWith(".geojson")) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            this.loadJsonFile(e.target.result);
+          };
+          reader.readAsText(file);
+      } else if (fileName.endsWith(".zip")) {
+          this.loadShapefile(file);
+      } else {
+          ElMessage.error("不支持的文件格式");
+      }
+    },
+
+    loadJsonFile(content) {
+      const features = new GeoJSON().readFeatures(content);
+      if (features.length > 0) {
+        // Add features to the map
+        this.drawSource.addFeatures(features);
+        // Also add to our local list for UI
+        features.forEach((feature) => {
+          const type = feature.getGeometry().getType();
+          let area = 0;
+          if (type === "Polygon") area = feature.getGeometry().getArea();
+          
+          // Ensure ID
+          if (!feature.getId()) feature.setId(this.randomId());
+
+          this.features.push({
+            id: feature.getId(),
+            type: type,
+            area: area,
+            selected: false,
+          });
+        });
+        this.view.fit(this.drawSource.getExtent(), { duration: 1000 });
+        ElMessage.success("GeoJSON 加载成功");
+      } else {
+        ElMessage.warning("文件中未发现要素");
+      }
+    },
+
+    async loadShapefile(file) {
+      try {
+          const reader = new FileReader();
+          reader.onload = async (e) => {
+            const arrayBuffer = e.target.result;
+            const geojsons = await this.convertShpToGeoJSON(arrayBuffer);
+            this.displayGeojson(geojsons);
+          };
+          reader.readAsArrayBuffer(file);
+      } catch (err) {
+          console.error(err);
+          ElMessage.error("Shapefile 加载失败");
+      }
+    },
+
+    async convertShpToGeoJSON(arrayBuffer) {
+      const shpData = await shp(arrayBuffer);
+      let geojsons = [];
+      if (Array.isArray(shpData)) {
+          shpData.forEach(data => geojsons.push(...new GeoJSON().readFeatures(data)));
+      } else {
+          geojsons.push(...new GeoJSON().readFeatures(shpData));
+      }
+      // Transform projection if needed (assuming source is 4326, map is 3857)
+      // shpjs usually returns 4326.
+      geojsons.forEach(feature => {
+          feature.getGeometry().transform("EPSG:4326", "EPSG:3857");
+      });
+      return geojsons;
+    },
+
+    displayGeojson(features) {
+        if (!features || features.length === 0) return;
+        
+        features.forEach(feature => {
+            if (!feature.getId()) feature.setId(this.randomId());
+            
+            const type = feature.getGeometry().getType();
+            let area = 0;
+            if (type === "Polygon") area = feature.getGeometry().getArea();
+
+            this.features.push({
+                id: feature.getId(),
+                type: type,
+                area: area,
+                selected: false
+            });
+        });
+        
+        this.drawSource.addFeatures(features);
+        this.view.fit(this.drawSource.getExtent(), { duration: 1000 });
+        ElMessage.success("Shapefile 加载成功");
+    },
+
+    // External Tests
+    testWMTS() {
+        this.$router.push("/testWMTS");
+    },
+    testWFS() {
+        this.$router.push("/testWFS");
+    },
+
     // Feature Actions
     onFeatureSelectChange(row) {
         const feature = this.drawSource.getFeatureById(row.id);
