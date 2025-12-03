@@ -1,14 +1,16 @@
 # 城市绿色空间展示平台
 
-<div align="center">
-  <img src="public/icon.png" alt="Logo" width="120" height="120">
-</div>
-
-<br>
-
 基于 Vue 3、OpenLayers 和 Vite 构建的现代化 WebGIS 应用，专注于城市绿地空间的可达性与公平性可视化分析。
 
 ![项目主页截图](main.png)
+
+> **⚠️ 服务状态说明**
+>
+> 这里的在线演示链接和后台数据服务目前**不可用**。
+> *   **数据服务器**: 原用于存储绿地数据的 GeoServer (`35.234.26.196`) 已过期。
+> *   **在线演示**: 部署域名 (`greenviz.top`) 及服务器已过期。
+>
+> 建议在本地自行搭建 GeoServer 服务，并在 `.env` 文件中配置 `VITE_GEOSERVER_URL` 以运行本项目。
 
 ## 项目简介
 
@@ -59,7 +61,15 @@
 pnpm install
 ```
 
-### 2. 启动开发服务器
+### 2. 配置环境变量
+
+复制示例配置并设置你的本地 GeoServer 地址：
+
+```bash
+cp .env.example .env
+```
+
+### 3. 启动开发服务器
 
 ```bash
 pnpm dev
@@ -67,16 +77,10 @@ pnpm dev
 
 服务默认运行在 `http://localhost:5173` (或根据配置自动调整)。
 
-### 3. 构建生产版本
+### 4. 构建生产版本
 
 ```bash
 pnpm build
-```
-
-### 4. 预览构建结果
-
-```bash
-pnpm preview
 ```
 
 ### 5. 代码规范
@@ -104,11 +108,4 @@ public/
 ├── geojson/         # 示例地理数据
 ├── images/          # 图标与图例资源
 └── icon.png         # 应用图标
-```
-
-## 部署
-
-```bash
-# 执行构建并运行部署脚本
-pnpm build-and-deploy
 ```
