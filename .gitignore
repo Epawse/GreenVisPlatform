@@ -21,3 +21,13 @@ pnpm-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+# AI & Personal
+.claude/
+.gemini/
+AGENTS.md
+CLAUDE.md
+chat-*.txt
+webgis实习.txt
+openspec/
+*.log
