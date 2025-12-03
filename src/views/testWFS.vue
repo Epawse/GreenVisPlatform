@@ -22,7 +22,28 @@ import { bbox as bboxStrategy } from "ol/loadingstrategy";
 export default {
   methods: {
     init() {
-      const url = "http://35.234.26.196:8080/geoserver/GreenAccessibility/ows";
+    testWFS() {
+      const vectorSource = new VectorSource();
+      const vector = new VectorLayer({
+        source: vectorSource,
+        style: new Style({
+          stroke: new Stroke({
+            color: "rgba(0, 0, 255, 1.0)",
+            width: 2,
+          }),
+        }),
+      });
+      const map = this.mapStore.mapInstance;
+      map.addLayer(vector);
+
+      const serverUrl = import.meta.env.VITE_GEOSERVER_URL || 'http://localhost:8080/geoserver';
+      const url = `${serverUrl}/GreenAccessibility/ows`;
+      const featureRequest = new WFS().writeGetFeature({
+        srsName: "EPSG:3857",
+        featureNS: "http://www.opengeospatial.net/GreenAccessibility",
+        featurePrefix: "GreenAccessibility",
+        featureTypes: ["greenAccessibility_walk_noFactor_2030"],
+        outputFormat: "application/json",
       let wfsVectorLayer = new VectorLayer({
         properties: {
           name: "wfs",

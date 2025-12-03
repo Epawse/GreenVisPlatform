@@ -396,7 +396,9 @@ export default {
           workspace = "Others";
           break;
       }
-      url = `http://35.234.26.196:8080/geoserver/${workspace}/wms`;
+      // Get URL from env or default to localhost
+      const baseUrl = import.meta.env.VITE_GEOSERVER_URL || 'http://localhost:8080/geoserver';
+      url = `${baseUrl}/${workspace}/wms`;
       const params = {
         LAYERS: `${workspace}:${this.selectedDataType[0]}_${this.selectedDataType[1]}_${this.selectedPolicy}_${this.selectedYear}`,
         TILED: true,
